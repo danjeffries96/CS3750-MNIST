@@ -4,7 +4,9 @@ import numpy as np
 from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.exceptions import NotFittedError
 from sklearn.metrics import accuracy_score
-from sklearn.model_selection import RandomizedSearchCV, GridSearchCV
+from sklearn.model_selection import RandomizedSearchCV, GridSearchCV, cross_val_score
+
+from functools import partial
 
 he_init = tf.variance_scaling_initializer()
 
@@ -218,32 +220,49 @@ def main():
   # scale train and test data
   X_train = (X_train - X_train_mean) / X_train_std
   X_test = (X_test - X_train_mean) / X_train_std
-  
-  dnn_clf = DNNClassifier(random_state=1, n_hidden_layers=2, activation=tf.nn.tanh, checks=99, batch_size=100)
-  # dnn_clf.fit(X_train, y_train, n_epochs=1000)
 
   def leaky_relu(alpha=0.01):
     def parametrized_leaky_relu(z, name=None):
-      return tf.mleakyaximum(alpha * z, z, name=name)
+      return tf.maximum(alpha * z, z, name=name)
     return parametrized_leaky_relu
+
+  dnn_clf = \
+    DNNClassifier(random_state=1 , n_hidden_layers=1, activation=tf.nn.elu, batch_size=100,
+                  dropout_rate=0.1)
+  # dnn_clf.fit(X_train, y_train, n_epochs=10002
 
   param_distribs = {
     "n_neurons": [10, 30, 50, 70, 90, 100, 120, 140, 160],
-    "batch_size": [10, 50, 100, 500],
-    "learning_rate": [0.01, 0.02, 0.05, 0.1],
-    "activation": [tf.nn.relu, tf.nn.elu, leaky_relu(alpha=0.01), leaky_relu(alpha=0.1)],
+    # "batch_size": [10, 50, 100, 500],
+    # "learning_rate": [0.01, 0.02, 0.05, 0.1],
+    # "activation": [tf.nn.relu, tf.nn.elu, leaky_relu(alpha=0.01), leaky_relu(alpha=0.1)],
     # you could also try exploring different numbers of hidden layers, different optimizers, etc.
     #"n_hidden_layers": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
-    #"optimizer_class": [tf.train.AdamOptimizer, partial(tf.train.MomentumOptimizer, momentum=0.95)],
+    # "optimizer_class": [tf.train.AdamOptimizer, partial(tf.train.MomentumOptimizer, momentum=0.95)],
+    "optimizer_class": [partial(tf.train.MomentumOptimizer, momentum=0.95)],
   }
-
    
 
-  rnd_search = RandomizedSearchCV(DNNClassifier(random_state=42), param_distribs, n_iter=50,
-                                                  random_state=42, verbose=2)
-  # y_pred = dnn_clf.predict(X_test)
-  # print(accuracy_score(y_test, y_pred))
+  # rnd_search = RandomizedSearchCV(DNNClassifier(random_state=42), param_distribs, n_iter=1,
+  #                                                 random_state=42, verbose=3)
+  # rnd_search.fit(X_train, y_train)
 
-# main()
+  # best = rnd_search.best_params_
+  # bs = rnd_search.best_score_
+  # print(bs, best)
+  # dnn_clf = rnd_search.best_estimator_
+  dnn_clf.fit(X_train, y_train)
+
+  y_pred_train = dnn_clf.predict(X_train)
+  cv_scores = cross_val_score(dnn_clf, X_train, y_train, cv=5)
+  y_pred = dnn_clf.predict(X_test)
+
+  print("Training accuracy:", accuracy_score(y_train, y_pred_train))
+  print("Cross val scores:", cv_scores)
+  print("Mean:", np.mean(cv_scores))
+  print("std:", np.std(cv_scores))
+  print("Test accuracy:", accuracy_score(y_test, y_pred))
+
+main()
  
  
