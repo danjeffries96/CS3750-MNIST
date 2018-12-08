@@ -222,10 +222,10 @@ def main():
   dnn_clf = DNNClassifier(random_state=1, n_hidden_layers=2, activation=tf.nn.tanh, checks=99, batch_size=100)
   # dnn_clf.fit(X_train, y_train, n_epochs=1000)
 
-	def leaky_relu(alpha=0.01):
-			def parametrized_leaky_relu(z, name=None):
-					return tf.maximum(alpha * z, z, name=name)
-			return parametrized_leaky_relu
+  def leaky_relu(alpha=0.01):
+    def parametrized_leaky_relu(z, name=None):
+      return tf.maximum(alpha * z, z, name=name)
+    return parametrized_leaky_relu
 
   param_distribs = {
     "n_neurons": [10, 30, 50, 70, 90, 100, 120, 140, 160],
