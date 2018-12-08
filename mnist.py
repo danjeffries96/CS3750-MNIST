@@ -244,8 +244,6 @@ def main():
   # y_pred = dnn_clf.predict(X_test)
   # print(accuracy_score(y_test, y_pred))
 
-main()
-
-
+# main()
  
  
