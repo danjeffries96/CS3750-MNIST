@@ -79,16 +79,15 @@ y = np.load("y_mnist1000.npy")
 
 np.random.seed(1)
 
-X, y = augment_data(X, y)
-
 indices = np.random.permutation(len(X))
 
-valid_ind = indices[:2000]
-test_ind = indices[2000:4000]
-train_ind = indices[4000:]
+valid_ind = indices[:100]
+test_ind = indices[100:200]
+train_ind = indices[200:]
 
 X_train = X[train_ind]
 y_train = y[train_ind]
+X_train, y_train = augment_data(X_train, y_train)
 
 X_validation = X[valid_ind]
 y_validation = y[valid_ind]
@@ -314,6 +313,10 @@ class CNNClassifier(BaseEstimator, ClassifierMixin):
                       return self        
             
                   valid_acc = self.score(X_valid, y_valid) 
+
+                  if valid_acc > 0.995:
+                      return self
+
                   self.v_scores.append({"Epoch": i * self.batch_size + off, "Validation": valid_acc})
                   msg = "Loss: %.4f; Validation accuracy: %s" % (loss, valid_acc)
                   self.log(msg)
@@ -325,7 +328,7 @@ class CNNClassifier(BaseEstimator, ClassifierMixin):
         with self.session.as_default() as sess:
             saver = tf.train.Saver()
             dt = datetime.now().strftime("%H-%M-%S")
-            save_path = saver.save(self.session, "./models/%s.ckpt" % dt)
+            save_path = saver.save(sess, "./models/%s.ckpt" % dt)
 
     def restore_model(self, model_name):
         with self.session.as_default() as sess:
@@ -404,7 +407,7 @@ param_grid = {
     "verbose":  2,
     "activations": selu,
     "learning_rate": 0.001,
-    "dropout_rate": 0.55,
+    "dropout_rate": 0.33,
     "batch_size": len(X_train) // 20,
 }
 
@@ -414,7 +417,6 @@ clf.fit(X_train, y_train, n_epochs=1000, X_valid=X_validation, y_valid=y_validat
 print("Test size:", len(X_test))
 test_msg = "Test accuracy: %s" % clf.score(X_test, y_test)
 print(test_msg)
-clf.save_model()
 clf.save_val_plot()
 
 log_name = "./logs/cnn_log_" + datetime.now().strftime("%H-%M-%S") + ".log"
