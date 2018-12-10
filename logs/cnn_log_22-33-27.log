@@ -1,0 +1,7 @@
+Param grid:
+optimizer_class: <class 'tensorflow.python.training.adam.AdamOptimizer'>
+learning_rate: 0.0005
+batch_size: 100
+activations: {'conv1': <function selu at 0x7ff088f80b70>, 'avg_pool': <function selu at 0x7ff088f80b70>, 'conv2': <function selu at 0x7ff088f80b70>, 'avg_pool2': <function selu at 0x7ff088f80b70>, 'conv3': <function selu at 0x7ff088f80b70>, 'dense': <function selu at 0x7ff088f80b70>}
+dropout_rate: 0.45
+Test accuracy: 0.986

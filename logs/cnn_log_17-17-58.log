@@ -1,0 +1,4 @@
+Param grid:
+verbose: [1]
+activations: [{'conv1': <function elu at 0x7f3b4cb33f28>, 'avg_pool': <function elu at 0x7f3b4cb33f28>, 'conv2': <function elu at 0x7f3b4cb33f28>, 'avg_pool2': <function elu at 0x7f3b4cb33f28>, 'conv3': <function elu at 0x7f3b4cb33f28>, 'dense': <function elu at 0x7f3b4cb33f28>}]
+dropout_rate: [0]

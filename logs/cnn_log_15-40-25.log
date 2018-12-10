@@ -1,0 +1,4 @@
+Param grid:
+verbose: [1]
+dropout_rate: [0, 0.1, 0.25]
+best score: 0.876, params: {'dropout_rate': 0, 'verbose': 1}

@@ -1,0 +1,5 @@
+Param grid:
+verbose: [1]
+activations: [{'conv1': <function selu at 0x7fac56e1c730>, 'avg_pool': <function selu at 0x7fac56e1c730>, 'conv2': <function selu at 0x7fac56e1c730>, 'avg_pool2': <function selu at 0x7fac56e1c730>, 'conv3': <function selu at 0x7fac56e1c730>, 'dense': <function selu at 0x7fac56e1c730>}, {'conv1': <function elu at 0x7fac56dfef28>, 'avg_pool': <function elu at 0x7fac56dfef28>, 'conv2': <function elu at 0x7fac56dfef28>, 'avg_pool2': <function elu at 0x7fac56dfef28>, 'conv3': <function elu at 0x7fac56dfef28>, 'dense': <function elu at 0x7fac56dfef28>}]
+dropout_rate: [0.25]
+best score: 0.8805, params: {'optimizer_class': <class 'tensorflow.python.training.adam.AdamOptimizer'>, 'learning_rate': 0.1, 'batch_size': 80, 'activations': {'conv1': <function elu at 0x7fac56dfef28>, 'avg_pool': <function elu at 0x7fac56dfef28>, 'conv2': <function elu at 0x7fac56dfef28>, 'avg_pool2': <function elu at 0x7fac56dfef28>, 'conv3': <function elu at 0x7fac56dfef28>, 'dense': <function elu at 0x7fac56dfef28>}, 'dropout_rate': 0.25}Test accuracy: 0.95

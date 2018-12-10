@@ -1,0 +1,3 @@
+Param grid:
+verbose: [1]
+dropout_rate: [0.25]

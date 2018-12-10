@@ -1,0 +1,7 @@
+Param grid:
+optimizer_class: functools.partial(<class 'tensorflow.python.training.momentum.MomentumOptimizer'>, momentum=0.99)
+learning_rate: 0.0005
+batch_size: 4900
+activations: {'conv1': <function selu at 0x7fc449eebae8>, 'avg_pool': <function selu at 0x7fc449eebae8>, 'conv2': <function selu at 0x7fc449eebae8>, 'avg_pool2': <function selu at 0x7fc449eebae8>, 'conv3': <function selu at 0x7fc449eebae8>, 'dense': <function selu at 0x7fc449eebae8>}
+dropout_rate: 0.45
+Test accuracy: 0.9364047619047619

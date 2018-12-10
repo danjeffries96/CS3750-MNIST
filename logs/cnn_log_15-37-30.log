@@ -1,0 +1,3 @@
+Param grid:
+verbose: [1]
+best score: 0.86025, params: {'verbose': 1}

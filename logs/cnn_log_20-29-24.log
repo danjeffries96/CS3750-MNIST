@@ -1,0 +1,4 @@
+Param grid:
+verbose: [1]
+activations: [{'conv1': <function relu at 0x7f34346ea620>, 'avg_pool': <function relu at 0x7f34346ea620>, 'conv2': <function relu at 0x7f34346ea620>, 'avg_pool2': <function relu at 0x7f34346ea620>, 'conv3': <function relu at 0x7f34346ea620>, 'dense': <function relu at 0x7f34346ea620>}, {'conv1': <function elu at 0x7f34346d32f0>, 'avg_pool': <function elu at 0x7f34346d32f0>, 'conv2': <function elu at 0x7f34346d32f0>, 'avg_pool2': <function elu at 0x7f34346d32f0>, 'conv3': <function elu at 0x7f34346d32f0>, 'dense': <function elu at 0x7f34346d32f0>}, {'conv1': <function selu at 0x7f34346eaa60>, 'avg_pool': <function selu at 0x7f34346eaa60>, 'conv2': <function selu at 0x7f34346eaa60>, 'avg_pool2': <function selu at 0x7f34346eaa60>, 'conv3': <function selu at 0x7f34346eaa60>, 'dense': <function selu at 0x7f34346eaa60>}]
+dropout_rate: [0.25]

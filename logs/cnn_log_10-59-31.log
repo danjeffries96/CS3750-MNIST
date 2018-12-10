@@ -1,0 +1,7 @@
+Param grid:
+optimizer_class: <class 'tensorflow.python.training.adam.AdamOptimizer'>
+learning_rate: 0.001
+batch_size: 100
+activations: {'conv1': <function tanh at 0x7ffbc7a96510>, 'avg_pool': <function tanh at 0x7ffbc7a96510>, 'conv2': <function tanh at 0x7ffbc7a96510>, 'avg_pool2': <function tanh at 0x7ffbc7a96510>, 'conv3': <function tanh at 0x7ffbc7a96510>, 'dense': <function tanh at 0x7ffbc7a96510>}
+dropout_rate: 0
+Test accuracy: 0.1155
