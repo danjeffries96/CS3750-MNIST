@@ -1,43 +1,11 @@
 import tensorflow as tf
 from sklearn.utils import shuffle
-from sklearn.model_selection import GridSearchCV
 from sklearn.base import BaseEstimator, ClassifierMixin
 import numpy as np
 
-
-X = np.load("x_mnist1000.npy")
-X = X.reshape((-1, 28, 28, 1))
-y = np.load("y_mnist1000.npy")
-
-np.random.seed(1)
-
-indices = np.random.permutation(len(X))
-train_indices = indices[:800]
-valid_ind = indices[800:900]
-test_ind = indices[900:]
-
-X_train = X[train_indices]
-y_train = y[train_indices]
-
-X_validation = X[valid_ind]
-y_validation = y[valid_ind]
-
-X_test = X[test_ind]
-y_test = y[test_ind]
-
-# pad for lenet
-pad_dims = ((0, 0), (2, 2), (2, 2), (0, 0))
-X_train = np.pad(X_train, pad_dims, "constant")
-X_validation = np.pad(X_validation, pad_dims, "constant")
-X_test = np.pad(X_test, pad_dims, "constant")
-
-
-N = len(X_train)
-BATCH_SIZE = N // 10 
-
 class CNNClassifier(BaseEstimator, ClassifierMixin):
     def __init__(self, verbose=1, optimizer_class=tf.train.AdamOptimizer,
-            learning_rate=0.001, batch_size=BATCH_SIZE, activation=tf.nn.tanh):
+            learning_rate=0.001, batch_size=128, activation=tf.nn.tanh):
         self.optimizer_class = optimizer_class
         self.learning_rate = learning_rate
         self.batch_size = batch_size
@@ -86,7 +54,7 @@ class CNNClassifier(BaseEstimator, ClassifierMixin):
         y_labels = tf.one_hot(self.y, 10)
         cross_entropy = tf.nn.softmax_cross_entropy_with_logits_v2(logits=logits, labels=y_labels)
         loss = tf.reduce_mean(cross_entropy)
-        opt = tf.train.AdamOptimizer(learning_rate=0.001)
+        opt = self.optimizer_class(learning_rate=self.learning_rate)
         self.train_op = opt.minimize(loss)
 
         self.init = tf.global_variables_initializer()
@@ -121,8 +89,8 @@ class CNNClassifier(BaseEstimator, ClassifierMixin):
               if i % (n_epochs / 10) == 0:
                   self.log("Epoch:", i, level=2)
               X_train, y_train = shuffle(X, y)
-              for off in range(0, N, BATCH_SIZE):
-                  end = off + BATCH_SIZE
+              for off in range(0, len(X_train), self.batch_size):
+                  end = off + self.batch_size
                   batch_x, batch_y = X_train[off:end], y_train[off:end]
                   sess.run(self.train_op, feed_dict={self.X: batch_x, self.y: batch_y})
               valid_acc = self.score(X_valid, y_valid) 
@@ -140,15 +108,3 @@ class CNNClassifier(BaseEstimator, ClassifierMixin):
             out = sess.run(self._predict, feed_dict={self.X: X_eval, self.y: y_eval})
             return np.mean(out == y_eval)
 
-
-clf = CNNClassifier()
-
-param_grid = {
-    # "optimizer_class": [tf.train.AdagradOptimizer, tf.train.MomentumOptimizer],
-    "verbose":  [2],
-    "activation": [tf.nn.tanh, tf.nn.relu, tf.nn.elu],
-}
-
-gs = GridSearchCV(clf, param_grid=param_grid, n_jobs=-1)
-gs.fit(X_train, y_train, n_epochs=10, X_valid=X_validation, y_valid=y_validation)
-print("best score, params:", gs.best_score_, ",", gs.best_params_)

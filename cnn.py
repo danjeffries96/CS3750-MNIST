@@ -32,24 +32,24 @@ X_test = np.pad(X_test, pad_dims, "constant")
 X_inp = tf.placeholder(tf.float32, shape=(None, 32, 32, 1))
 y_inp = tf.placeholder(tf.int32, (None))
 
-conv1 = tf.layers.conv2d(X_inp, filters=6, kernel_size=5,  strides=1, padding="valid", activation=tf.nn.tanh) 
+conv1 = tf.layers.conv2d(X_inp, filters=6, kernel_size=5,  strides=1, padding="valid", activation=tf.nn.relu) 
 
 avg_pool = tf.layers.average_pooling2d(conv1, pool_size=2, strides=2)
-avg_pool = tf.nn.tanh(avg_pool)
+#avg_pool = tf.nn.tanh(avg_pool)
 
 conv2 = tf.layers.conv2d(avg_pool, filters=16, kernel_size = 5, strides=1,
-                       padding="valid", activation = tf.nn.tanh)
+                       padding="valid", activation = tf.nn.relu)
 
 avg_pool2 = tf.layers.average_pooling2d(conv2, pool_size = 2, strides=2)
-avg_pool2 = tf.nn.tanh(avg_pool2)
+#avg_pool2 = tf.nn.tanh(avg_pool2)
 
 conv3 = tf.layers.conv2d(avg_pool2, filters=120, kernel_size = 5, strides=1,
-                      padding="valid", activation = tf.nn.tanh)
+                      padding="valid", activation = tf.nn.relu)
 
 # flatten for dense layers
 flat = tf.reshape(conv3, [-1, 120])
 
-dense = tf.layers.dense(inputs=flat, units=84, activation=tf.nn.tanh)
+dense = tf.layers.dense(inputs=flat, units=84, activation=tf.nn.relu)
 
 logits = tf.layers.dense(dense, units=10)
 
