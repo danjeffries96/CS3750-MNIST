@@ -81,13 +81,6 @@ class DataAugment(TransformerMixin):
                     X_aug.append(shifted)
                     y_aug.append(label)
 
-                    # rotate and shift
-                    # for degree in range(0, 24, 4):
-                    #     rotated = tf.contrib.keras.preprocessing.image.random_rotation(
-                    #                 shifted, degree, row_axis=0, col_axis=1, channel_axis=2)
-                    #     X_aug.append(rotated)
-                    #     y_aug.append(label)
-
             # random zoom up to 20%
             # zoomed = tf.contrib.keras.preprocessing.image.random_zoom(
             #         x, (0.9, 1.0), row_axis=0, col_axis=1, channel_axis=2)
