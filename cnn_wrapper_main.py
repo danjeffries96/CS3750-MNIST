@@ -382,14 +382,6 @@ default_activations = {
     "dense": tf.nn.tanh,
 }
 
-from copy import copy
-
-clf = CNNClassifier()
-
-a1 = copy(default_activations)
-a1["avg_pool2"] = tf.nn.elu
-a1["conv3"] = tf.nn.elu
-a1["dense"] = tf.nn.elu
 
 elu = {x: tf.nn.elu for x in default_activations}
 selu = {x: tf.nn.selu for x in default_activations}
@@ -397,49 +389,19 @@ relu = {x: tf.nn.relu for x in default_activations}
 tanh= {x: tf.nn.tanh for x in default_activations}
 
 param_grid = {
-    # "optimizer_class": [tf.train.AdamOptimizer, tf.train.AdagradOptimizer, tf.train.MomentumOptimizer],
-    "verbose":  [1],
-    "activations": [relu, elu, selu],
-    # "learning_rate": [0.1, 0.01, 0.001],
-    "dropout_rate": [0.25],
+    "verbose":  2,
+    "activations": elu,
+    "learning_rate": 0.001,
+    "dropout_rate": 0.35,
+    # "batch_size": len(X_train) // 20,
+    "batch_size": 500, 
 }
 
-from functools import partial
-
-momentum = partial(tf.train.MomentumOptimizer, momentum=0.99)
-
-# param_grid = {
-#     "verbose":  2,
-#     "activations": elu,
-#     "learning_rate": 0.001,
-#     "dropout_rate": 0.35,
-#     # "batch_size": len(X_train) // 20,
-#     "batch_size": 500, 
-# }
-
-# clf.set_params(**param_grid)
-# clf.logdir = "./tflogs"
-# clf.fit(X_train, y_train, n_epochs=1000, X_valid=X_validation, y_valid=y_validation)
-# print("Test size:", len(X_test))
-# test_msg = "Test accuracy: %s" % clf.score(X_test, y_test)
-# print(test_msg)
-# clf.save_val_plot()
-
-log_name = "./logs/cnn_log_" + datetime.now().strftime("%H-%M-%S") + ".log"
-with open(log_name, "w") as log:
-    log.write("Param grid:\n")
-    param_grid = clf.get_params()
-    for p in param_grid:
-        log.write("%s: %s\n" % (p, param_grid[p]))
- 
-    gs = GridSearchCV(clf, param_grid=param_grid, n_jobs=-1)
-    gs.fit(X_train, y_train, n_epochs=25, X_valid=X_validation, y_valid=y_validation)
-    best_msg = "best score: %s, params: %s" % (gs.best_score_, gs.best_estimator_.get_params())
-    print(best_msg)
-    log.write(best_msg)
-
-    test_msg = "Test accuracy: %s" % gs.best_estimator_.score(X_test, y_test)
-    print(test_msg)
-    log.write(test_msg)
-
-    gs.best_estimator_.save_val_plot()
+clf = CNNClassifier()
+clf.set_params(**param_grid)
+clf.logdir = "./tflogs"
+clf.fit(X_train, y_train, n_epochs=1000, X_valid=X_validation, y_valid=y_validation)
+print("Test size:", len(X_test))
+test_msg = "Test accuracy: %s" % clf.score(X_test, y_test)
+print(test_msg)
+clf.save_val_plot()
