@@ -7,8 +7,11 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 from sklearn.utils import shuffle
-from sklearn.base import BaseEstimator, ClassifierMixin
+from sklearn.base import BaseEstimator, ClassifierMixin, TransformerMixin
 from ext_test import kaggle_test
+
+from sklearn.pipeline import Pipeline
+from sklearn.model_selection import GridSearchCV
 
 
 def augment_data(X, y):
@@ -20,32 +23,32 @@ def augment_data(X, y):
         X_aug.append(x)
         y_aug.append(label)
 
-        # random rotations up to -20/20 degrees
-        # for degree in range(-60, 60, 5):
-        #     rotated = tf.contrib.keras.preprocessing.image.random_rotation(
-        #                 x, degree, row_axis=0, col_axis=1, channel_axis=2)
-        #     X_aug.append(rotated)
-        #     y_aug.append(label)
-
-        #     # random shears up to 40% intensity        
-        #     for sh in range(-40, 40, 5):
-        #         sh /- 10
-        #         sheared = tf.contrib.keras.preprocessing.image.random_shear(
-        #                 rotated, sh, row_axis=0, col_axis=1, channel_axis=2)
-        #         X_aug.append(sheared)
-        #         y_aug.append(label)
-
-        for _ in range(50):
-            rot = np.random.randint(-60, 60) 
-            sh = np.random.randint(-40, 40) / 10
+        # random rotations up to -60/60 degrees
+        for degree in range(-60, 60, 10):
             rotated = tf.contrib.keras.preprocessing.image.random_rotation(
-                        x, rot, row_axis=0, col_axis=1, channel_axis=2)
+                        x, degree, row_axis=0, col_axis=1, channel_axis=2)
             X_aug.append(rotated)
             y_aug.append(label)
-            sheared = tf.contrib.keras.preprocessing.image.random_shear(
-                    rotated, sh, row_axis=0, col_axis=1, channel_axis=2)
-            X_aug.append(sheared)
-            y_aug.append(label)
+
+            # random shears up to 40% intensity        
+            for sh in range(-40, 40, 10):
+                sh /- 10
+                sheared = tf.contrib.keras.preprocessing.image.random_shear(
+                        rotated, sh, row_axis=0, col_axis=1, channel_axis=2)
+                X_aug.append(sheared)
+                y_aug.append(label)
+
+        # for _ in range(50):
+        #     rot = np.random.randint(-60, 60) 
+        #     sh = np.random.randint(-40, 40) / 10
+        #     rotated = tf.contrib.keras.preprocessing.image.random_rotation(
+        #                 x, rot, row_axis=0, col_axis=1, channel_axis=2)
+        #     X_aug.append(rotated)
+        #     y_aug.append(label)
+        #     sheared = tf.contrib.keras.preprocessing.image.random_shear(
+        #             rotated, sh, row_axis=0, col_axis=1, channel_axis=2)
+        #     X_aug.append(sheared)
+        #     y_aug.append(label)
 
             
         # random shifts 20% left, right, up or down
@@ -94,7 +97,7 @@ y_validation = y[valid_ind]
 
 X_test = X[test_ind]
 y_test = y[test_ind]
-X_test, y_test = kaggle_test()
+# X_test, y_test = kaggle_test()
 
 def class_prevalence(v):
     return [sum(v == c) / len(v) for c in range(0, 10)]
@@ -103,10 +106,10 @@ print("Validation cp:", class_prevalence(y_validation))
 print("Test cp:", class_prevalence(y_test))
 
 # pad for lenet
-pad_dims = ((0, 0), (2, 2), (2, 2), (0, 0))
-X_train = np.pad(X_train, pad_dims, "constant")
-X_validation = np.pad(X_validation, pad_dims, "constant")
-X_test = np.pad(X_test, pad_dims, "constant")
+# pad_dims = ((0, 0), (2, 2), (2, 2), (0, 0))
+# X_train = np.pad(X_train, pad_dims, "constant")
+# X_validation = np.pad(X_validation, pad_dims, "constant")
+# X_test = np.pad(X_test, pad_dims, "constant")
 
 N = len(X_train)
 
@@ -155,6 +158,8 @@ class CNNClassifier(BaseEstimator, ClassifierMixin):
         self.init_sess()
     
     def _build_graph(self):
+        self._build_graph_tb()
+        return
 
         self.X = tf.placeholder(tf.float32, shape=(None, 32, 32, 1))
         self.y = tf.placeholder(tf.int32, (None))
@@ -248,7 +253,7 @@ class CNNClassifier(BaseEstimator, ClassifierMixin):
         xentropy = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logits, labels=self.y)
         self.loss = tf.reduce_mean(xentropy)
         opt = self.optimizer_class(learning_rate=self.learning_rate)
-        self.train_op = opt.minimize(loss)
+        self.train_op = opt.minimize(self.loss)
 
         self.init = tf.global_variables_initializer()
 
@@ -314,7 +319,7 @@ class CNNClassifier(BaseEstimator, ClassifierMixin):
             
                   valid_acc = self.score(X_valid, y_valid) 
 
-                  if valid_acc > 0.995:
+                  if valid_acc > 0.98:
                       return self
 
                   self.v_scores.append({"Epoch": i * self.batch_size + off, "Validation": valid_acc})
@@ -403,21 +408,22 @@ from functools import partial
 
 momentum = partial(tf.train.MomentumOptimizer, momentum=0.99)
 
-param_grid = {
-    "verbose":  2,
-    "activations": selu,
-    "learning_rate": 0.001,
-    "dropout_rate": 0.33,
-    "batch_size": len(X_train) // 20,
-}
+# param_grid = {
+#     "verbose":  2,
+#     "activations": elu,
+#     "learning_rate": 0.001,
+#     "dropout_rate": 0.35,
+#     # "batch_size": len(X_train) // 20,
+#     "batch_size": 500, 
+# }
 
-clf.set_params(**param_grid)
-clf.logdir = "./tflogs"
-clf.fit(X_train, y_train, n_epochs=1000, X_valid=X_validation, y_valid=y_validation)
-print("Test size:", len(X_test))
-test_msg = "Test accuracy: %s" % clf.score(X_test, y_test)
-print(test_msg)
-clf.save_val_plot()
+# clf.set_params(**param_grid)
+# clf.logdir = "./tflogs"
+# clf.fit(X_train, y_train, n_epochs=1000, X_valid=X_validation, y_valid=y_validation)
+# print("Test size:", len(X_test))
+# test_msg = "Test accuracy: %s" % clf.score(X_test, y_test)
+# print(test_msg)
+# clf.save_val_plot()
 
 log_name = "./logs/cnn_log_" + datetime.now().strftime("%H-%M-%S") + ".log"
 with open(log_name, "w") as log:
@@ -425,16 +431,15 @@ with open(log_name, "w") as log:
     param_grid = clf.get_params()
     for p in param_grid:
         log.write("%s: %s\n" % (p, param_grid[p]))
-    log.write(test_msg)
  
-#     gs = GridSearchCV(clf, param_grid=param_grid, n_jobs=-1)
-#     gs.fit(X_train, y_train, n_epochs=25, X_valid=X_validation, y_valid=y_validation)
-#     best_msg = "best score: %s, params: %s" % (gs.best_score_, gs.best_estimator_.get_params())
-#     print(best_msg)
-#     log.write(best_msg)
-# 
-#     test_msg = "Test accuracy: %s" % gs.best_estimator_.score(X_test, y_test)
-#     print(test_msg)
-#     log.write(test_msg)
-# 
-#     gs.best_estimator_.save_val_plot()
+    gs = GridSearchCV(clf, param_grid=param_grid, n_jobs=-1)
+    gs.fit(X_train, y_train, n_epochs=25, X_valid=X_validation, y_valid=y_validation)
+    best_msg = "best score: %s, params: %s" % (gs.best_score_, gs.best_estimator_.get_params())
+    print(best_msg)
+    log.write(best_msg)
+
+    test_msg = "Test accuracy: %s" % gs.best_estimator_.score(X_test, y_test)
+    print(test_msg)
+    log.write(test_msg)
+
+    gs.best_estimator_.save_val_plot()
