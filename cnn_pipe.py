@@ -13,17 +13,22 @@ from ext_test import kaggle_test
 from sklearn.pipeline import Pipeline
 from sklearn.model_selection import GridSearchCV
 
+import warnings
+warnings.filterwarnings("ignore", category=DeprecationWarning)
+
 class DataAugment(TransformerMixin):
-    def __init__(self, rotation=None, shear=None, rot_and_shear=False,
+    def __init__(self, n_iter=10, rotation=None, shear=None, rot_and_shear=False,
             x_shifts=None, y_shifts=None):
-        self.rotation = rotation or [0, 0]
-        self.shear = shear or [0, 0]
+        self.n_iter = n_iter
+        self.rotation = rotation or []
+        self.shear = shear or []
         self.rot_and_shear = rot_and_shear
 
-        self.x_shifts = x_shifts or [0, 0]
-        self.y_shifts = y_shifts or [0, 0]
+        self.x_shifts = x_shifts or []
+        self.y_shifts = y_shifts or []
 
         self._params = {
+            "n_iter",
             "rotation",
             "shear",
             "rot_and_shear",
@@ -54,38 +59,39 @@ class DataAugment(TransformerMixin):
             X_aug.append(x)
             y_aug.append(label)
 
-            # random rotations up to -60/60 degrees
-            for degree in range(*self.rotation):
-                rotated = tf.contrib.keras.preprocessing.image.random_rotation(
-                            x, degree, row_axis=0, col_axis=1, channel_axis=2)
-                X_aug.append(rotated)
-                y_aug.append(label)
-
-
-                if self.rot_and_shear:
-                    # random shears up to 40% intensity        
-                    for sh in range(*self.shear):
-                        sh /= 10
-                        sheared = tf.contrib.keras.preprocessing.image.random_shear(
-                                rotated, sh, row_axis=0, col_axis=1, channel_axis=2)
-                        X_aug.append(sheared)
-                        y_aug.append(label)
-
-            # random shifts 20% left, right, up or down
-            for xsh in range(*self.x_shifts):
-                xsh /= 10
-                for ysh in range(*self.y_shifts):
-                    ysh /= 10
-                    shifted = tf.contrib.keras.preprocessing.image.random_shift(
-                            x, xsh, ysh, row_axis=0, col_axis=1, channel_axis=2)
-                    X_aug.append(shifted)
+            for _ in range(self.n_iter):
+                # random rotations up to -60/60 degrees
+                for degree in self.rotation:
+                    rotated = tf.contrib.keras.preprocessing.image.random_rotation(
+                                x, degree, row_axis=0, col_axis=1, channel_axis=2)
+                    X_aug.append(rotated)
                     y_aug.append(label)
 
-            # random zoom up to 20%
-            # zoomed = tf.contrib.keras.preprocessing.image.random_zoom(
-            #         x, (0.9, 1.0), row_axis=0, col_axis=1, channel_axis=2)
-            # X_aug.append(zoomed)
-            # y_aug.append(label)
+
+                    if self.rot_and_shear:
+                        # random shears up to 40% intensity        
+                        for sh in self.shear:
+                            sh /= 10
+                            sheared = tf.contrib.keras.preprocessing.image.random_shear(
+                                    rotated, sh, row_axis=0, col_axis=1, channel_axis=2)
+                            X_aug.append(sheared)
+                            y_aug.append(label)
+
+                # random shifts 20% left, right, up or down
+                for xsh in self.x_shifts:
+                    xsh /= 10
+                    for ysh in self.y_shifts:
+                        ysh /= 10
+                        shifted = tf.contrib.keras.preprocessing.image.random_shift(
+                                x, xsh, ysh, row_axis=0, col_axis=1, channel_axis=2)
+                        X_aug.append(shifted)
+                        y_aug.append(label)
+
+                # random zoom up to 20%
+                # zoomed = tf.contrib.keras.preprocessing.image.random_zoom(
+                #         x, (0.9, 1.0), row_axis=0, col_axis=1, channel_axis=2)
+                # X_aug.append(zoomed)
+                # y_aug.append(label)
 
         X_aug = np.array(X_aug)
         y_aug = np.array(y_aug)
@@ -101,15 +107,14 @@ np.random.seed(1)
 
 indices = np.random.permutation(len(X))
 
-valid_ind = indices[:100]
-test_ind = indices[100:200]
-train_ind = indices[200:]
+test_ind = indices[:100]
+train_ind = indices[100:]
 
 X_train = X[train_ind]
 y_train = y[train_ind]
 
-X_validation = X[valid_ind]
-y_validation = y[valid_ind]
+# X_validation = X[valid_ind]
+# y_validation = y[valid_ind]
 
 X_test = X[test_ind]
 y_test = y[test_ind]
@@ -118,29 +123,25 @@ y_test = y[test_ind]
 def class_prevalence(v):
     return [sum(v == c) / len(v) for c in range(0, 10)]
 print("Train cp:", class_prevalence(y_train))
-print("Validation cp:", class_prevalence(y_validation))
+# print("Validation cp:", class_prevalence(y_validation))
 print("Test cp:", class_prevalence(y_test))
 
 # pad for lenet
 pad_dims = ((0, 0), (2, 2), (2, 2), (0, 0))
 X_train = np.pad(X_train, pad_dims, "constant")
-X_validation = np.pad(X_validation, pad_dims, "constant")
+# X_validation = np.pad(X_validation, pad_dims, "constant")
 X_test = np.pad(X_test, pad_dims, "constant")
 
 N = len(X_train)
 
 class CNNClassifier(BaseEstimator, ClassifierMixin):
     def __init__(self, verbose=2, optimizer_class=tf.train.AdamOptimizer,
-            learning_rate=0.0005, batch_size=100, activations=None,
-            dropout_rate=0, logdir=None, X_valid=X_validation, y_valid=y_validation,
-            using_da=False):
+            learning_rate=0.0005, batch_size=500, activations=None,
+            dropout_rate=0.35, logdir=None, using_da=False):
         self.optimizer_class = optimizer_class
         self.learning_rate = learning_rate
         self.batch_size = batch_size
         self.dropout_rate = dropout_rate
-
-        self.X_valid = X_valid
-        self.y_valid = y_valid
 
         self.logdir = logdir
         self.writer = None
@@ -182,7 +183,6 @@ class CNNClassifier(BaseEstimator, ClassifierMixin):
         self.init_sess()
     
     def _build_graph(self):
-
         self.X = tf.placeholder(tf.float32, shape=(None, 32, 32, 1))
         self.y = tf.placeholder(tf.int32, (None))
 
@@ -307,7 +307,7 @@ class CNNClassifier(BaseEstimator, ClassifierMixin):
         self.tf_log()
 
         # print params
-        self.log(self.get_params(), level=1)
+        self.log(self.get_params(), level=2)
 
         self.session = tf.Session(graph=self.graph)
         with self.session.as_default() as sess:
@@ -322,9 +322,8 @@ class CNNClassifier(BaseEstimator, ClassifierMixin):
 
         print("Calling fit with shapes: %s, %s" % (X.shape, y.shape))
 
-        if not X_valid or not y_valid:
-            X_valid = self.X_valid
-            y_valid = self.y_valid
+        max_iter = 1000
+        bi = 0
 
         with self.session.as_default() as sess:
             self.init.run()
@@ -336,6 +335,11 @@ class CNNClassifier(BaseEstimator, ClassifierMixin):
                   self.log("Epoch:", i, level=2)
               X_train, y_train = shuffle(X, y)
               for off in range(0, len(X_train), self.batch_size):
+                  bi += self.batch_size
+                  if bi > max_iter:
+                      print("Early stopping! 10K samples")
+                      return self
+
                   end = off + self.batch_size
                   batch_x, batch_y = X_train[off:end], y_train[off:end]
                   sess.run(self.train_op, feed_dict={self.X: batch_x, self.y: batch_y})
@@ -350,7 +354,7 @@ class CNNClassifier(BaseEstimator, ClassifierMixin):
                       print("Early stopping!")
                       return self        
 
-                  if len(X_valid) and len(y_valid):
+                  if X_valid and y_valid:
                       valid_acc = self.score(X_valid, y_valid) 
 
                       self.v_scores.append({"Epoch": i * self.batch_size + off, "Validation": valid_acc})
@@ -426,12 +430,14 @@ relu = {x: tf.nn.relu for x in default_activations}
 tanh= {x: tf.nn.tanh for x in default_activations}
 
 param_grid = {
-    "aug__rotation": [[-60, 60, 10], [-30, 30, 10]],
-    "aug__shear": [[0, 50, 10], [0, 20, 10]],
-    "aug__rot_and_shear": [True, False],
-    "clf__activations": [selu, elu, tanh],
-    "clf__dropout_rate": [0.25, 0.35, 0.45],
-    "clf__batch_size": [500],
+    "aug__rotation": [[60]],# [120], [180], 
+    #                 [-30, 30], [-60, 60], [-90, 90]],
+    "aug__n_iter": [5, 10, 15],
+    "clf__activations": [selu],
+    # "clf__activations": [selu, elu],
+    # "clf__learning_rate": [0.01, 0.005, 0.05],
+    # "clf__dropout_rate": [0.25, 0.45],
+    # "clf__batch_size": [500],
     "clf__using_da": [True],
 }
 
@@ -452,9 +458,9 @@ with open(log_name, "w") as log:
     for p in param_grid:
         log.write("%s: %s\n" % (p, param_grid[p]))
  
-    gs = LoggingGridSearch(pipe, param_grid=param_grid)
+    gs = GridSearchCV(pipe, param_grid=param_grid, cv=5)
     gs.fit(X_train, y_train)
-    best_msg = "best score: %s, params: %s" % (gs.best_score_, gs.best_estimator_.get_params())
+    best_msg = "best score: %s, params: %s" % (gs.best_score_, gs.best_params_)
     print(best_msg)
     log.write(best_msg)
 
