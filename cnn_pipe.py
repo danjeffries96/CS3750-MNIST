@@ -1,17 +1,14 @@
 import tensorflow as tf
-
 import numpy as np
 from datetime import datetime
-
+from ext_test import kaggle_test
 import matplotlib.pyplot as plt
 import pandas as pd
-
 from sklearn.utils import shuffle
 from sklearn.base import BaseEstimator, ClassifierMixin, TransformerMixin
-from ext_test import kaggle_test
-
 from sklearn.pipeline import Pipeline
-from sklearn.model_selection import GridSearchCV
+from sklearn.model_selection import GridSearchCV, cross_val_score
+from sklearn.preprocessing import StandardScaler
 
 import warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning)
@@ -87,12 +84,6 @@ class DataAugment(TransformerMixin):
                         X_aug.append(shifted)
                         y_aug.append(label)
 
-                # random zoom up to 20%
-                # zoomed = tf.contrib.keras.preprocessing.image.random_zoom(
-                #         x, (0.9, 1.0), row_axis=0, col_axis=1, channel_axis=2)
-                # X_aug.append(zoomed)
-                # y_aug.append(label)
-
         X_aug = np.array(X_aug)
         y_aug = np.array(y_aug)
 
@@ -108,6 +99,7 @@ np.random.seed(1)
 indices = np.random.permutation(len(X))
 
 test_ind = indices[:100]
+# valid_ind = indices[100:200]
 train_ind = indices[100:]
 
 X_train = X[train_ind]
@@ -129,19 +121,19 @@ print("Test cp:", class_prevalence(y_test))
 # pad for lenet
 pad_dims = ((0, 0), (2, 2), (2, 2), (0, 0))
 X_train = np.pad(X_train, pad_dims, "constant")
-# X_validation = np.pad(X_validation, pad_dims, "constant")
 X_test = np.pad(X_test, pad_dims, "constant")
 
 N = len(X_train)
 
 class CNNClassifier(BaseEstimator, ClassifierMixin):
     def __init__(self, verbose=2, optimizer_class=tf.train.AdamOptimizer,
-            learning_rate=0.0005, batch_size=500, activations=None,
-            dropout_rate=0.35, logdir=None, using_da=False):
+            learning_rate=0.0005, batch_size=500, max_iter=200000,
+            activations=None, dropout_rate=0.35, logdir=None, using_da=True):
         self.optimizer_class = optimizer_class
         self.learning_rate = learning_rate
         self.batch_size = batch_size
         self.dropout_rate = dropout_rate
+        self.max_iter = max_iter
 
         self.logdir = logdir
         self.writer = None
@@ -183,6 +175,7 @@ class CNNClassifier(BaseEstimator, ClassifierMixin):
         self.init_sess()
     
     def _build_graph(self):
+
         self.X = tf.placeholder(tf.float32, shape=(None, 32, 32, 1))
         self.y = tf.placeholder(tf.int32, (None))
 
@@ -322,7 +315,6 @@ class CNNClassifier(BaseEstimator, ClassifierMixin):
 
         print("Calling fit with shapes: %s, %s" % (X.shape, y.shape))
 
-        max_iter = 1000
         bi = 0
 
         with self.session.as_default() as sess:
@@ -330,14 +322,16 @@ class CNNClassifier(BaseEstimator, ClassifierMixin):
 
             checks_since_prog = 0
         
-            for i in range(n_epochs):
-              if i % (n_epochs / 10) == 0:
-                  self.log("Epoch:", i, level=2)
-              X_train, y_train = shuffle(X, y)
+            # for i in range(n_epochs):
+            #   if i % (n_epochs / 10) == 0:
+            #       self.log("Epoch:", i, level=2)
+            #   X_train, y_train = shuffle(X, y)
+            while True:
               for off in range(0, len(X_train), self.batch_size):
                   bi += self.batch_size
-                  if bi > max_iter:
-                      print("Early stopping! 10K samples")
+                  if bi > self.max_iter:
+                      print("Early stopping!", self.max_iter, "samples.")
+                      self.save_val_plot()
                       return self
 
                   end = off + self.batch_size
@@ -350,14 +344,14 @@ class CNNClassifier(BaseEstimator, ClassifierMixin):
                       self.best_loss = loss
                       checks_since_prog = 0
                       best_params_ = self.get_params()
-                  if checks_since_prog > 25:
-                      print("Early stopping!")
-                      return self        
+                  # if checks_since_prog > 25:
+                  #     print("Early stopping!")
+                  #     return self        
 
-                  if X_valid and y_valid:
+                  if X_valid is not None and y_valid is not None:
                       valid_acc = self.score(X_valid, y_valid) 
 
-                      self.v_scores.append({"Epoch": i * self.batch_size + off, "Validation": valid_acc})
+                      self.v_scores.append({"Epoch": bi, "Validation": valid_acc})
                       msg = "Loss: %.4f; Validation accuracy: %s" % (loss, valid_acc)
                       self.log(msg)
 
@@ -407,13 +401,9 @@ class CNNClassifier(BaseEstimator, ClassifierMixin):
         """
         df = pd.DataFrame(data=self.v_scores, columns=self.v_columns)
         now = datetime.now().strftime("%H-%M-%S")
-        fn = "./val_scores/" + now + ".csv"
+        name = now + "no_aug_200k"
+        fn = "./val_scores/" + name + ".csv"
         df.to_csv(fn, index=False)
-
-        with open("./gs_logs/" + now + ".log", "w") as fout:
-            params = self.get_params()
-            for p in params:
-                fout.write("%s = %s;\n" % (p, params[p]))
 
 default_activations = [
     "conv1",
@@ -430,15 +420,14 @@ relu = {x: tf.nn.relu for x in default_activations}
 tanh= {x: tf.nn.tanh for x in default_activations}
 
 param_grid = {
-    "aug__rotation": [[60]],# [120], [180], 
-    #                 [-30, 30], [-60, 60], [-90, 90]],
-    "aug__n_iter": [5, 10, 15],
+    "aug__rotation": [[30], [60], [90]],
+    "aug__shear": [[10], [20], [40]],
+    "aug__rot_and_shear": [True, False],
+    "aug__n_iter": [10],
     "clf__activations": [selu],
-    # "clf__activations": [selu, elu],
-    # "clf__learning_rate": [0.01, 0.005, 0.05],
-    # "clf__dropout_rate": [0.25, 0.45],
-    # "clf__batch_size": [500],
-    "clf__using_da": [True],
+    "clf__learning_rate": [0.01],
+    "clf__dropout_rate": [0.1],
+    "clf__batch_size": [200],
 }
 
 da = DataAugment()
@@ -457,14 +446,14 @@ with open(log_name, "w") as log:
     log.write("Param grid:\n")
     for p in param_grid:
         log.write("%s: %s\n" % (p, param_grid[p]))
- 
     gs = GridSearchCV(pipe, param_grid=param_grid, cv=5)
     gs.fit(X_train, y_train)
     best_msg = "best score: %s, params: %s" % (gs.best_score_, gs.best_params_)
     print(best_msg)
     log.write(best_msg)
-
+    
     test_msg = "Test accuracy: %s" % gs.best_estimator_.score(X_test, y_test)
+    test_msg = "Test accuracy: %s" % pipe.score(X_test, y_test)
     print(test_msg)
     log.write(test_msg)
     
